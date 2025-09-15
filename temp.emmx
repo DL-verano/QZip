@@ -1,0 +1,524 @@
+标架场生成四边形网格
+	quadwild
+		开源代码配置
+			1、拉代码
+				https://github.com/nicopietroni/quadwild
+			2、配置
+				（1）windows 配置 libblas-dev
+					安装教程：https://blog.csdn.net/qq_48176859/article/details/116795558
+						到 step8 成功生成 静态库 openblas.lib
+				（2）cmake 配置 CoMISo
+					进入 libs/CoMISo 进行 CMake 
+					如果遇到：A library with BLAS API not found.
+						解决：修改 CMakeLists  
+						https://ask.csdn.net/questions/8137387
+				（3）使用 QtCreator 编译 quadwild/quadwild.pro
+				（4）配置 gurobi 
+					gurobi_c++mdd2017.lib
+					gurobi120.lib
+		直接配置
+			报错
+				搜索无法解析的外部符号时，直接搜索具体的符号：
+					或者添加对应的 .cpp 文件
+				1、
+					解决方案
+						在属性 -> C/C++ -> 预处理器 -> 预处理器定义中
+							添加：_CRT_SECURE_NO_WARNINGS
+							表示忽略 vs 默认检查，保留旧的写法
+				2、
+					解决方案
+						在属性 -> C/C++ -> 语言 -> 符合模式 中
+							修改为否
+				3、
+					解决方案
+						在属性 -> C/C++ -> 常规 -> SDL检查 中
+							修改为否
+							使用的函数版本太老了，可能已经弃用了
+				4、
+					解决方案
+						在属性 -> 链接器 -> 命令行 中
+							添加   /FORCE:MULTIPLE
+							include 得太多太杂，导致有些变量重复定义
+						更好的解决方案是找到重复定义位置，进行修改
+				5、
+					解决方案
+						在属性 -> C/C++ -> 优化 -> 全程序优化 中
+							选择 否
+							debug 不报，release 报错
+				6、
+					解决方案
+						#include <wrap/ply/plylib.cpp>
+						这些错误通常都是使用一些库没有包含对应lib文件所出现的，但是vcglib都是头文件没有lib文件。将这个cpp文件，加入当前目录即可，让编译器找到相关的符号。
+				7、
+					解决方案
+						解决方案
+							在属性 -> C/C++ -> 命令行 -> 其他选项 中
+								添加 /bigobj
+								.obj 文件节限制问题，通过添加编译器选项 “/bigobj”来扩展这个限制，允许编译更大的对象文件
+				8、
+					解决方案
+						在附加包含目录中
+							添加：
+				9、
+					解决方案
+						在 #include <cmath> 之前  #define _USE_MATH_DEFINES
+						根据报错确定哪个文件 ‘
+				10、由于模板导致的无法解析的外部符号：
+					在使用模板时，采用了头文件与源文件分离的方式，在编译时，无论写什么函数，只要是模板化的就会报错
+					分析问题
+						（1）什么是外部符号
+							生成可执行文件要经历 ：编译 -> 链接 -> 生成
+								分离式编译会将代码分成一个一个的编译单元（头文件和源文件）
+								所有编译单元独立编译以后，链接器将各个独立的编译单元链接起来，成为一个可执行文件
+							链接器工作内容
+								编译过程中会生成三个表：重定向表、导出符号表、未解决符号表
+									导出符号表
+										将程序中所有符号与实际地址连接起来
+											例如在A 文件中写了函数 temp，在 B 文件中调用时，导出符号表负责记录函数 temp 对应的入口地址，从而将两个文件链接起来，实现了跨文件调用
+											由于 B 文件内部无法得知函数 temp 的具体实现，因此称为外部符号
+						（2）模板实例化过程
+							模板化的函数只有在实际使用时才会进行实例化，生成对应的代码
+							那么在调用模板化的函数时，当前头文件只要函数的声明，具体实现内容在定义模板的源文件中，因此需要通过链接器找到函数的定义
+							但是模板化的函数并没有生成实际的代码，因此模板没有被使用，不会生成实际代码，所以链接器在查找时找不到具体的源文件实现代码，报错：无法解析的外部符号
+					解决方案
+						引入头文件时，同时引入源文件 
+						将模板的声明和定义都写在头文件中
+				11、
+					解决方案
+						在属性 -> C/C++ -> 预处理器 -> 预处理器定义 中
+							清空预处理器定义
+				12、由于链接器中添加的库文件区别 debug、release 引起版本不兼容 
+					解决方案
+						在属性 -> 链接器 -> 输入 -> 附加依赖项 中
+							gurobi_c++mdd2017
+								表示 debug 模式
+							gurobi_c++md2017
+								表示 release 模式
+				13、无法解析的外部符号
+					说明没有头文件中的函数具体实现，需要包含对应的 cpp 文件
+						如果直接使用 include 不行的话，可以直接将该 cpp 文件添加到源文件中
+						例如
+							解决方案
+								（1）找到这个函数所在的头文件
+									确实不好找，可以在github中找，如果没有的话就要查询：如何搜索多个文件中是否存在某个关键字
+								（2）找到以后将该头文件对应的源文件（有具体实现）
+									添加到源文件中
+					（1）
+					（2）
+					（3）
+				14、遇到了：
+					将 generate_subtopology.h 中的 #include "Pattern_all.h" 注释
+				15、找不到 xxxxx.dll 
+					将 xxxxx.dll 文件放到项目 .sln 文件同级目录下
+				16、节数超过对象文件格式限制：请使用/bigobj进行编译
+					j解决
+						属性 -> c++ -> 命令行 -> 其他选项 -> 添加：/bigobj
+				17、vcglib 是从 github clone 下来的
+					https://github.com/cnr-isti-vclab/vcglib
+				18、tracing 也是从 github clone 下来的
+					https://github.com/nicopietroni/xfield_tracer
+				19、M_PI_2 未定义标识符
+					添加引用到的头文件即可
+				20、语法错误：意外的令牌“标识符”，预期的令牌为“ID 表达式”
+					c++ -> 语言 -> 符合模式 -> 否
+				21、被声明为已否决
+					解决
+						c++ -> 常规 -> SDL 检查 -> 否
+				22、 ifdef WIN32 中报错
+					先注释掉，因为只是选择对应的编译方式
+						config.h
+				23、缺少 lpsolver55.dll 
+					找到对应的 dll 添加就行了
+				24、无法打开源文件 QGLWidget
+					包含 QT 中的库
+						C:\Qt\Qt5.12.9\5.12.9\msvc2017_64\include\QtOpenGL
+				25、无法打开源文件：GL/Widget
+					（1）添加附加包含目录
+						D:\lib\glew\glew-2.1.0\include
+					（2）添加库目录
+						D:\lib\glew\glew-2.1.0\lib\Release\x64
+					（3）添加链接器
+						glew32.lib
+					（4）添加 dll
+						将 dll 放到项目的文件夹中
+							glew32.dll
+				26、无法打开源文件 “AntWeakBar.h”
+					（1）添加附加包含目录
+						D:\lib\AntWeakBar
+					（2）添加库目录
+						D:\lib\AntWeakBar
+					（3）添加链接器
+						AntTweakBar64.lib
+					（4）添加 dll
+						将 dll 放到项目的文件夹中
+							AntTweakBar64.dll
+				27、无法解析的外部符号：glBegin 
+					（1）添加附加包含目录
+						D:\lib\freeglut\include\GL
+					（2）添加库目录
+						D:\lib\freeglut\lib\x64
+					（3）添加链接器
+						freeglut.lib
+					（4）添加 dll
+						freeglut.dll
+					（5）头文件引入
+						#include <glut.h>
+				28、遇到 max 报错
+					原因
+						名字min和max与<windows.h>中传统的min/max宏定义有冲突。
+					解决方案
+						在包含头文件最前面加上预处理 #define NOMINMAX
+				29、无法解析的外部符号：QGLWidget
+					qt 项目引入 OpenGL 有两种方式
+						（1）利用 qt 自带的工具进行添加 
+							a.  在 vs 中找到 Qt VS Tools
+							b. Qt Project Settings
+							c. Qt Modules
+							d. 勾选 OpenGL 
+						（2）自行添加（好像不行）
+							（1）添加附加包含目录
+								Qt5OpenGL.lib
+							（2）添加库目录
+								C:\Qt\Qt5.12.9\5.12.9\msvc2017_64\lib
+							（3）添加链接器
+								Qt5OpenGL.lib
+							（4）添加 dll
+								Qt5OpenGL.dll
+							（5）头文件引入
+								#include <glut.h>
+			待解决
+				1、triangle_mesh_type.h 中 LoadTriMesh 方法修改
+				2、
+		运行
+			1、没有 gurobi  license 
+				有 license 以后无法成功注册 
+		代码
+			1、quad_from_patches.cpp：QuadRetopology::findSubdivisions
+				传参
+					chartData
+						labels 
+							8
+							表示划分的 patch 数，从 0 开始
+						charts
+							8
+								patch ID
+							faces
+								当前patch上的faceId
+							borderFaces
+								边界面，三角形至少有一条边在边界上，其所在的面才属于边界面
+							adjacentCharts
+								当前 patch 上周围的 patchID
+							chartSides 
+								按照几边型细分网格
+									三角形、四边形、五边形、六边形
+								vertices
+									表示当前 patch 上第 i 条边界边上的节点 id
+								subsides
+								reversedSubside
+								length
+									当前 patch 的每条边的边长
+								size
+									多少个点把边分成了多少段
+										例如 5 个点，可以分成 4 段
+							chartSubsides
+						subsides
+							15
+						获取 chatData 数据：QuadRetopology::computeChartData
+							传参
+								trimesh
+								trimeshPartitions
+									数据结构：vector<vector<int>>
+										存储的是每个 patch 对应的单元 faceID
+								trimeshCorners
+									存储的是 faceID ，从 0 开始
+					meshCorners
+						存储的是每个 patch 的角点坐标
+							使用半边数据结构 id 要比输入的加 1
+					chartEdgeLength
+					parameters
+					gap
+						返回结果
+					ilpResult
+						返回结果
+				quadretopology.cpp ：findSubdivisions
+					internal::solveILP
+						gurobi 案例
+						传参
+							callbackTimeLimit
+								求解过程中允许的时间限制
+							callbackGapLimit
+								允许的目标间隙（即最优解与当前解之间的相对差距）
+						GRBEnv env = GRBEnv();
+							含义
+								创建了一个 Gurobi 环境
+								所有 Gurobi 模型和相关操作都必须在一个环境中进行
+						GRBModel model = GRBModel(env);
+							含义
+								在 gurobi 环境中创建一个 gurobi 模型
+						GurobiCallBack cb(callbackTimeLimit, callbackGapLimit);
+							含义
+								用于在求解过程中监控和控制求解的行为
+						model.setCallback(&cb);
+							含义
+								将回调对象 cb 设置为模型的回调函数。这意味着在求解过程中，Gurobi 将定期调用这个回调函数，以便根据设定的时间和间隙限制来调整求解过程。
+						model.set(GRB_DoubleParam_TimeLimit, timeLimit);
+							含义
+								设置求解的时间限制
+						model.set(GRB_DoubleParam_MIPGap, gapLimit);
+							含义
+								设置混合整数规划的目标间隙限制。
+						GRBQuadExpr obj = 0;
+							含义
+								创建了两个二次表达式 obj 和 supportObj，用于构建目标函数
+						GRBQuadExpr supportObj = 0;
+							含义
+								创建了两个二次表达式 obj 和 supportObj，用于构建目标函数
+						vector<GRBVar> vars(chartData.subsides.size());
+							含义
+								初始化变量 vars，该变量是一个 Gurobi 变量的向量，长度与 subsides 的数量相同。
+							存储的是添加的变量数量，x1、x2、x3.....
+						vars[subsideId] = model.addVar(MIN_SUBDIVISION_VALUE, GRB_INFINITY, 0.0, GRB_INTEGER, "s" + to_string(subsideId));
+							作用
+								创建变量
+							传参
+								MIN_SUBDIVISION_VALUE
+									该变量可以取的最小值
+								GRB_INFINITY
+									该变量可以取的最大值
+									正无穷
+								0.0
+									目标函数中该变量的系数
+								GRB_INTEGER
+									变量类型
+										GRB_CONTINUOUS
+											连续型变量
+										GRB_INTEGER
+											整数变量
+										GRB_BINARY
+											二进制变量，只能是 0 1
+								"s" + to_string(subsideId)
+									变量命名
+							数学表达
+									定义了 15 个整数变量 si，si 的取值范围大于 1 
+						ISOMETRY
+							等距映射
+							子主题
+								sideSubdivison = 7.4
+							GRBLinExpr value = vars[subsideId] - sideSubdivision;
+								GRBLinExpr 
+									创建和操作线性表达式的类
+									允许你将常数和变量结合在一起
+								数学表达
+							GRBQuadExpr isoExpr = 0;  isoExpr += getGurobiCostTermContinuous(model, method, value);
+								isoExpr = value * value
+								二次表达式 = 线性表达式 * 线性表达式
+								数学表达
+						REGULARITY
+							正则化
+							getChartSubsideSum(chartData, cId, vars, isFixed, ilpResults, hardParityConstraint, chartSubsideSum);
+								cId：charts.size() 
+									遍历 charts 从 0 开始
+								vars
+									添加的 15 个整数变量
+								isFixed 
+									全是 false
+								ilpResults 
+									全是 -1
+								hardParityConstraint
+									true
+							GRBVar c = model.addVar(0, GRB_INFINITY, 0.0, GRB_INTEGER);
+								定义整数变量 c ，取值范围为：c >= 0
+							model.addConstr(subside0Sum + 1 <= subside1Sum + subside2Sum + c);
+								数学表达
+							regExpr += getGurobiCostTermInteger(model, ILPMethod::ABS, value) / nSides * regularityNonQuadrilateralsWeight;
+								传参
+									model
+									ILPMethod::ABS 
+										1
+									value 
+										c
+								getGurobiCostTermInteger(GRBModel& model, const ILPMethod& method, const GRBLinExpr& value)
+									method = ABS 
+									expr = getGurobiAbsInteger(model, value);
+										GRBVar diff = model.addVar(-GRB_INFINITY, GRB_INFINITY, 0.0, GRB_INTEGER);
+										GRBVar abs = model.addVar(0, GRB_INFINITY, 0.0, GRB_INTEGER);
+										model.addConstr(diff == value);
+											定义约束
+										model.addGenConstrAbs(abs, diff);
+											绝对值关系
+			2、quad_from_patches.cpp：QuadRetopology::quadrangulate
+		注
+			vcg 中 mesh face 下标从 0 开始，半边数据结构从 1 开始
+		替换库
+			求解器分析
+				https://cloud.tencent.com/developer/article/1523167
+			gurobi
+				性能最快商业求解器
+			lp-solve
+				只能求解线性规划问题，不能求解二次规划问题
+			CBC
+				并不直接支持二次规划，要转成线性问题进行求解
+			CPLEX
+				商业求解器
+					可以求解二次规划在内的多种优化问题
+			CoMISo
+				亚琛工业大学研发
+					德国
+				用于建立和求解受线性等式约束和整数约束约束的二次能量线性系统
+				https://www.graphics.rwth-aachen.de/software/comiso/
+			SCIP
+				开源
+				windows引入
+					1、安装 SCIP 
+						https://scipopt.org/#download 
+					2、安装成功以后会生成
+					3、在终端中输入：scip
+					4、在 vs 中引入
+						（1）包含目录中添加 D:\lib\SCIPOptSuite 9.2.1\include
+						（2）库目录中添加 D:\lib\SCIPOptSuite 9.2.1\lib
+						（3）链接器输入中添加 
+						（4）将 bin 中所有的 dll 文件复制到当前项目下 
+				API
+					1、打印
+						1、打印变量名称
+							获取变量名称 SCIPvarGetName(vars[i])
+						2、打印变量表达式
+							SCIPprintExpr(scip, expr_x, NULL);
+								其中 expr_x 是使用 SCIP_EXPR* 定义的表达式
+								要想成功打印，必须要执行 SCIPfree(&scip) 释放内存
+								在释放内存以后统一输出，不是在写的地方进行输出，输出顺序被打乱
+						3、打印约束
+							SCIPprintCons(scip, cons2, NULL);
+						4、打印最优解（变量取值、最优解）
+							SCIPprintBestSol(scip, NULL, NULL);
+					4、创建整数变量
+						前提
+							要先创建问题
+								SCIPcreateProbBasic(scip, "spring");
+						（1）定义变量
+							SCIP_VAR* c = NULL;
+						（2）创建
+							SCIPcreateVarBasic(scip, &c, "c", 0.0, SCIPinfinity(scip), 0.0, SCIP_VARTYPE_INTEGER);
+								scip
+									SCIP 数据结构
+								&c
+									变量指针，被赋值的变量
+								“c”
+									变量名称
+								0.0
+									边界下限
+								SCIPinfinity(scip)
+									边界上限正无穷
+								SCIP_VARTYPE_INTEGER
+									变量类型为整数
+										SCIP_VARTYPE_CONTINUOUS 连续变量
+										SCIP_VARTYPE_BINARY 二进制变量
+										SCIP_VARTYPE_IMPLINT 
+						（3）添加到问题中
+							SCIPaddVar(scip, c);
+					5、添加约束
+						（1）定义约束
+							SCIP_CONS* cons1 = NULL;
+						（2）创建约束
+							SCIPcreateConsBasicLinear(scip, &cons1, "cons1", 0, NULL, NULL, 3, 23.0);
+								传参
+									scip
+										SCIP 数据结构
+									&cons1
+										约束指针，被赋值的约束
+									“cons1”
+										约束名称
+									0.0
+										约束中非零的个数
+									NULL
+									NULL
+									3
+										左侧约束常量，也就是 3 <= x1+x2+x3+x4
+									23
+										右侧约束常量，也就是 x1+x2+x3+x4 <= 23
+							SCIPaddCoefLinear(scip, cons1, x1, -1.0);
+							SCIPaddCoefLinear(scip, cons1, x2, 1.0);
+							SCIPaddCoefLinear(scip, cons1, x3, 1.0);
+							SCIPaddCoefLinear(scip, cons1, x4, 10.0);
+						（3）添加到问题中
+							SCIPaddCons(scip, cons1);
+					6、实现表达式与变量相加
+						（1）先将变量转成变量表达式
+							SCIP_EXPR* expr_var;
+							SCIPcreateExprVar(scip, &expr_var, vars[subsideId], NULL, NULL);
+						（2）在进行判断
+							a. 如果表达式为空，则直接将变量表达式赋值给结果表达式
+								if (subsideSum == NULL)
+								subsideSum = expr_var;
+							b. 如果表达式不为空，就要将变量表达式与结果表达式相加求解
+								SCIP_EXPR* exprs_sum[] = { subsideSum, expr_var };
+									进行相加的项
+								SCIP_Real coefs_sum[] = { 1.0, 1.0 };
+									相加的系数
+								SCIP_EXPR* new_expr;
+									相加的结果表达式
+								SCIPcreateExprSum(scip, &new_expr, 2, exprs_sum, coefs_sum, 0.0, NULL, NULL);
+									执行相加动作
+									传参
+										scip
+											数据结构
+										new_expr
+											最终被赋值的表达式
+										2
+											相加的表达式个数
+										exprs_sum
+											有几项表达式数组
+										coefs_sum
+											表达式前的系数数组
+										0.0
+											常数值
+								subsideSum = new_expr;
+									进行赋值
+					7、表达式与常量相加
+						（1）先将常量转成常量表达式
+							SCIP_EXPR* expr_const;
+							SCIPcreateExprValue(scip, &expr_const, 1.233, NULL, NULL);
+						（2）进行相加
+							SCIP_EXPR* exprs_sum11[] = { expr_sum };
+							SCIP_Real coefs_sum11[] = { 1.0 };
+							SCIPcreateExprSum(scip, &expr_sum, 1, exprs_sum11, coefs_sum11, 20, NULL, NULL);
+								scip
+									数据结构
+								&expr_sum
+									被赋值的求和表达式
+								1
+									相加的表达式数量
+								exprs_sum11
+									表达式数组
+								coefs_sum11
+									表达式系数
+								20
+									被相加的常量
+					8、判断表达式类型
+						（1）是不是求和表达式
+							SCIPisExprSum(scip, expr_sum)
+						（2）是不是值表达式（表达式中全是数值）
+							SCIPisExprValue(scip, expr)
+						（3）是不是变量表达式（表达式中）
+					9、更改约束中的系数
+						SCIPchgCoefLinear(scip，cons，var，real)
+							scip
+								数据结构
+							cons
+								约束
+							var
+								要修改的变量
+							real
+								修改后变量的系数
+					10、如果想获取表达式中的变量
+						（1）首先定义 3 个要获取变量的表达式
+						（2）将 expr_xx 转成求和表达式
+						（3）获取求和表达式并输出
+								可以发现 x 是加了括号的，表示可以继续获取子项，而 y 是不可以的
+						（4）获取子项
+				遗留问题
+					isFixed中存在 true 时的位置处理
+						到时候搜索 isFixed ，进行特殊处理
+					测试绝对值
+					sharp文件是什么格式？
+					scaleFact 表示对每个 patch 都缩放这么多倍，所以会导致渐变的问题
